@@ -10,8 +10,10 @@ namespace io {
 void
 send(const std::string& msg)
 {
-    std::cerr << "Sending " << msg.size() << " bytes" << std::endl;
-    std::cerr << msg.size() << ":" << msg << std::endl;
+#ifdef DEBUG
+//    std::cerr << "Sending " << msg.size() << " bytes" << std::endl;
+//    std::cerr << msg.size() << ":" << msg << std::endl;
+#endif
     std::cout << msg.size() << ":" << msg << std::flush;
 }
 

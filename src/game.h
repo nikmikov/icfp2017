@@ -3,4 +3,4 @@
 #include "state.h"
 #include "protocol.h"
 
-void make_move(State* state, proto::Move* move);
+bool make_move(State* state, proto::Move* move);

@@ -12,6 +12,7 @@ State::State(const proto::Setup& setup):data(0)
     header->punters_sz = setup.punters;
     header->punter_id = setup.punter;
     header->move_seq = 0;
+    std::cerr << "I AM PUNTER #" << setup.punter << std::endl;
 
     // find maximum node_id (assume that id's are contiguous and not random)
     int max_node_id = 0;
@@ -40,6 +41,7 @@ State::State(const proto::Setup& setup):data(0)
 
     for (uint32_t idx = 0, edge_iref = 0; idx < edges_of_nodes.size(); ++idx) {
         nodes[idx].first_edge_ref = edge_iref;
+        nodes[idx].is_mine = 0;
         for (uint32_t e_id: edges_of_nodes[idx]) {
             assert(edge_iref < header->edges * 2);
             edge_refs[edge_iref++].edge_id = e_id;
@@ -47,7 +49,10 @@ State::State(const proto::Setup& setup):data(0)
     }
 
     for (size_t idx = 0; idx < setup.map.mines.size(); ++idx) {
-        mines[idx].site_id = setup.map.mines[idx];
+        uint32_t site_id = setup.map.mines[idx];
+        std::cerr << "Setting mine: " << idx << ":" << site_id << std::endl;
+        mines[idx].site_id = site_id;
+        nodes[site_id].is_mine = 1;
     }
 }
 
@@ -90,8 +95,10 @@ State::update(const std::vector< proto::Move >& moves)
 {
     for(const auto& m: moves) {
         if (m.move_type == proto::CLAIM) {
+            std::cerr << "Edge claimed: " << m.source << "->" << m.target << ", by: " << m.punter << std::endl;
             Edge* e = find_edge(m.source, m.target);
-            assert(e != nullptr && e->claimed_by == UNDEFINED);
+            assert(e != nullptr);
+            assert(e->is_unclaimed());
             e->claimed_by = m.punter;
         }
     }

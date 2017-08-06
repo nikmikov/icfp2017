@@ -82,6 +82,6 @@ main()
         std::cerr << "Unknown game state: " << raw << std::endl;
         exit(1);
     }
-    std::cerr << "===END===" << std::endl;
+    std::cerr << "=== END ===" << std::endl;
     return 0;
 }

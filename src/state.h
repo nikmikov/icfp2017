@@ -6,7 +6,7 @@
 #include "protocol.h"
 
 
-#define UNDEFINED 0xffffffff
+#define UNDEFINED 0x7fffffff
 
 
 struct Header {
@@ -20,9 +20,11 @@ struct Header {
 
 
 struct Node {
+    Node(): first_edge_ref(UNDEFINED), is_mine(0) {}
 //    Node(const proto::Site& s): id(s.id) {}
 //    uint32_t id;
-    uint32_t first_edge_ref = UNDEFINED;
+    uint32_t first_edge_ref : 31;
+    uint32_t is_mine : 1;
 };
 
 struct EdgeRef {
@@ -35,7 +37,8 @@ struct Edge {
     uint32_t target;
     uint32_t claimed_by = UNDEFINED; // if claimed by punter or 0xffffffff if not claimed
 
-    bool is_claimed() const { return claimed_by !=  UNDEFINED; }
+    bool is_claimed() const { return claimed_by != UNDEFINED; }
+    bool is_unclaimed() const { return claimed_by == UNDEFINED; }
 };
 
 struct Mine {
@@ -51,7 +54,9 @@ public:
 
     void update(const std::vector< proto::Move >& moves);
 
-    uint32_t num_edges() { return get_header()->edges;  }
+    uint32_t num_nodes() { return get_header()->nodes - 1; }
+    uint32_t num_edges() { return get_header()->edges; }
+    uint32_t num_mines() { return get_header()->mines; }
 
     Header* get_header() { return header; }
     Node* get_nodes() { return nodes; }
@@ -62,19 +67,39 @@ public:
 
     Edge* get_edge_by_ref(uint32_t edge_ref) { return get_edge(edge_refs[edge_ref].edge_id); }
 
+    Node* get_node(uint32_t node_id) { return &nodes[node_id]; }
     Edge* get_edge(uint32_t edge_id) { return &edges[edge_id]; }
+    Mine* get_mine(uint32_t mine_id) { return &mines[mine_id]; }
+
+    bool is_mine(uint32_t node_id) { return get_node(node_id)->is_mine != 0; }
+
+    proto::Move claim_edge(uint32_t source, uint32_t target) { return proto::Move(whoami(), source, target); }
+
+    bool claimed_by_me(Edge* e) { return (int)e->claimed_by == whoami(); }
+
+    /** tange from..to edges reference*/
+    std::pair<uint32_t, uint32_t>
+    get_edges_iter(uint32_t source)
+    {
+        uint32_t from_ref = nodes[source].first_edge_ref;
+        uint32_t to_ref = nodes[source + 1].first_edge_ref;
+        assert(from_ref <= to_ref);
+        return std::make_pair(from_ref, to_ref);
+    }
 
     Edge*
     find_edge(uint32_t source, uint32_t target)
     {
         assert(source < header->nodes - 1);
         assert(target < header->nodes - 1);
+        auto edges_iter = get_edges_iter(source);
+
         uint32_t from_ref = nodes[source].first_edge_ref;
         uint32_t to_ref = nodes[source + 1].first_edge_ref;
         assert(from_ref <= to_ref);
-        for(;from_ref < to_ref; ++from_ref) {
-            Edge* e = get_edge_by_ref(from_ref);
-            if (e->target == target) return e;
+        for(uint32_t ref = edges_iter.first; ref < edges_iter.second; ++ref) {
+            Edge* e = get_edge_by_ref(ref);
+            if (e->target == target || e->source == target) return e;
         }
         return nullptr;
     }
