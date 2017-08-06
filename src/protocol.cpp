@@ -37,6 +37,16 @@ read_setup(const json::value::object& root)
     Setup result;
     result.punter = static_cast<int>(root.at("punter").get<double>());
     result.punters = static_cast<int>(root.at("punters").get<double>());
+    result.has_futures = result.has_splurges = result.has_options = false;
+    if (root.find("settings") != root.end()) {
+        auto settings = root.at("settings").get<json::object>();
+        result.has_futures = settings.find("futures") != settings.end()
+            && settings.at("futures").get<bool>();
+        result.has_splurges = settings.find("splurges") != settings.end()
+            && settings.at("splurges").get<bool>();
+        result.has_options = settings.find("options") != settings.end()
+            && settings.at("options").get<bool>();
+    }
 
     const auto& map = root.at("map").get<json::object>();
     const auto& sites = map.at("sites").get<json::array>();

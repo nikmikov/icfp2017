@@ -24,6 +24,14 @@ State::State(const proto::Setup& setup):data(0)
     header->edges = setup.map.rivers.size();
     header->mines = setup.map.mines.size();
 
+    header->has_futures = setup.has_futures;
+    header->has_options = setup.has_options;
+    header->has_splurges = setup.has_splurges;
+    std::cerr << "Settings: futures: " <<  (header->has_futures != 0)
+              << ", splurges: " << (header->has_splurges != 0)
+              << ", options: " << (header->has_options != 0)
+              << std::endl;
+
     update_pointers();
     data.resize(sentinel - data.data());
     update_pointers();

@@ -24,6 +24,9 @@ struct Map {
 struct Setup {
     int punter;
     int punters;
+    bool has_futures;
+    bool has_splurges;
+    bool has_options;
     Map map;
 };
 

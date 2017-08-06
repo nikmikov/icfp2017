@@ -62,6 +62,7 @@ main()
 {
     std::cerr << "===BEGIN===" << std::endl;
     handshake();
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     auto raw = io::receive();
     json::value jsn;
@@ -78,10 +79,14 @@ main()
         gameplay(root);
     } else if (root.find("stop") != root.end()) {
         scoring(root);
+    } else if (root.find("timeout") != root.end()) {
+        std::cerr << "Timeout: "<< root.at("timeout").get<double>() << std::endl;
     } else {
         std::cerr << "Unknown game state: " << raw << std::endl;
         exit(1);
     }
+    auto current_time = std::chrono::high_resolution_clock::now();
+    std::cerr << "Elapsed: " << std::chrono::duration_cast<std::chrono::microseconds>(current_time - start_time).count() << " microseconds" << std::endl;
     std::cerr << "=== END ===" << std::endl;
     return 0;
 }

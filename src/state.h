@@ -16,6 +16,9 @@ struct Header {
     uint32_t nodes;      // total number of sites
     uint32_t edges;      // total number of rivers
     uint32_t mines;      // total number of mines
+    uint8_t  has_futures;
+    uint8_t  has_splurges;
+    uint8_t  has_options;
 };
 
 
