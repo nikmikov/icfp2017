@@ -80,21 +80,20 @@ State::serialize() const
 {
     std::string result;
     Base64::Encode(data, &result);
-    std::cerr << "Encoded: " << data.size() << " bytes to " << result << std::endl;
+//    std::cerr << "Encoded: " << data.size() << " bytes to " << result << std::endl;
     return result;
 }
 
 
 void
-State::update(const std::vector<proto::Move>& moves)
+State::update(const std::vector< proto::Move >& moves)
 {
-    get_header()->move_seq++;
-    for (const auto& m: moves) {
+    for(const auto& m: moves) {
         if (m.move_type == proto::CLAIM) {
             Edge* e = find_edge(m.source, m.target);
             assert(e != nullptr && e->claimed_by == UNDEFINED);
             e->claimed_by = m.punter;
         }
     }
-
+    get_header()->move_seq++;
 }

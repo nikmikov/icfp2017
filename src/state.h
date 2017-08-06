@@ -34,6 +34,8 @@ struct Edge {
     uint32_t source;
     uint32_t target;
     uint32_t claimed_by = UNDEFINED; // if claimed by punter or 0xffffffff if not claimed
+
+    bool is_claimed() const { return claimed_by !=  UNDEFINED; }
 };
 
 struct Mine {
@@ -47,14 +49,20 @@ public:
 
     std::string serialize() const;
 
-    void update(const std::vector<proto::Move>& moves);
+    void update(const std::vector< proto::Move >& moves);
+
+    uint32_t num_edges() { return get_header()->edges;  }
 
     Header* get_header() { return header; }
     Node* get_nodes() { return nodes; }
     Edge* get_edges() { return edges; }
     Mine* get_mines() { return mines; }
 
-    Edge* get_edge(uint32_t edge_ref) { return &edges[edge_refs[edge_ref].edge_id]; }
+    int whoami() { return static_cast<int>(get_header()->punter_id); }
+
+    Edge* get_edge_by_ref(uint32_t edge_ref) { return get_edge(edge_refs[edge_ref].edge_id); }
+
+    Edge* get_edge(uint32_t edge_id) { return &edges[edge_id]; }
 
     Edge*
     find_edge(uint32_t source, uint32_t target)
@@ -65,7 +73,7 @@ public:
         uint32_t to_ref = nodes[source + 1].first_edge_ref;
         assert(from_ref <= to_ref);
         for(;from_ref < to_ref; ++from_ref) {
-            Edge* e = get_edge(from_ref);
+            Edge* e = get_edge_by_ref(from_ref);
             if (e->target == target) return e;
         }
         return nullptr;
