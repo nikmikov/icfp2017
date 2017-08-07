@@ -30,6 +30,12 @@ struct Setup {
     Map map;
 };
 
+struct Future {
+    Future(int s, int t): source(s),target(t) {}
+    int source;
+    int target;
+};
+
 enum MoveType {CLAIM, PASS, SPLURGE, OPTION};
 
 struct Move {
@@ -58,7 +64,7 @@ std::string write_handshake(const std::string& handshake);
 
 Setup read_setup(const json::value::object& root);
 
-std::string write_punter_ready(int punter, const std::string& state);
+std::string write_punter_ready(int punter, const std::vector<Future>& futures, const std::string& state);
 
 void read_moves(const json::value::object& root, Moves* game);
 

@@ -75,12 +75,22 @@ read_setup(const json::value::object& root)
 }
 
 std::string
-write_punter_ready(int punter, const std::string& state)
+write_punter_ready(int punter, const std::vector<Future>& futures, const std::string& state)
 {
     json::value v;
     v.set<json::object>(json::object());
     v.get<json::object>()["ready"] = json::value(static_cast<double>(punter));
     v.get<json::object>()["state"] = json::value(state);
+    if (!futures.empty()) {
+        json::value::array futures_val;
+        for (const auto& f: futures) {
+            json::value::object m;
+            m["source"] = json::value(static_cast<double>(f.source));
+            m["target"] = json::value(static_cast<double>(f.target));
+            futures_val.push_back(json::value(m));
+        }
+        v.get<json::object>()["futures"] = json::value(futures_val);
+    }
     return v.serialize();
 }
 
@@ -122,7 +132,7 @@ read_moves(const json::value::object& root, Moves* moves)
             moves->push_back(Move::option(punter, source, target));
         } else {
             std::cerr << "Unknown move type: " << elem << std::endl;
-            exit(1);
+            assert(false);
         }
     }
 }

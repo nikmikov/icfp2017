@@ -24,7 +24,7 @@ unclaimed_edges_from(State* state, uint32_t root)
         auto iter = state->get_edges_iter(node);
         for (auto i = iter.first; i < iter.second; ++i) {
             Edge* e = state->get_edge_by_ref(i);
-            if (state->claimed_by_me(e)) {
+            if (e->claimed_by_me()) {
                 // claimed by me
                 uint32_t t = e->source == node ? e->target: e->source;
                 if (visited.find(t) == visited.end()){
@@ -79,7 +79,7 @@ path_to_nearest_unconnected_mine(State* state, uint32_t root)
         auto iter = state->get_edges_iter(node);
         for (auto i = iter.first; i < iter.second; ++i) {
             Edge* e = state->get_edge_by_ref(i);
-            if (state->claimed_by_me(e) || !e->is_claimed()) {
+            if (e->claimed_by_me() || !e->is_claimed()) {
                 // can travel
                 uint32_t t = e->source == node ? e->target: e->source;
                 if (visited.find(t) != visited.end()) continue; // already visited
@@ -91,7 +91,7 @@ path_to_nearest_unconnected_mine(State* state, uint32_t root)
                     std::cerr << "Path found:" << root << " -> " << t << " ===>  ";
                     for (auto it = path.rbegin(); it != path.rend(); ++it) {
                         Edge* eee = *it;
-                        std::cerr << "(" << eee->source << "," << eee->target << ") ";
+                        std::cerr << "(" << eee->source << "," << eee->target << "," << eee->claimed << eee->option <<  eee->me << ")";
                     }
                     std::cerr << std::endl;
                     for (auto it = path.rbegin(); it != path.rend(); ++it) {
@@ -104,6 +104,61 @@ path_to_nearest_unconnected_mine(State* state, uint32_t root)
         }
     }
     return nullptr;
+}
+
+// return first unclaimed edge ref or nullptr
+Edge*
+shortest_path(State* state, uint32_t from, uint32_t to, bool use_options)
+{
+    std::queue<uint32_t> queue;
+    std::unordered_map<uint32_t, uint32_t> visited;
+
+    uint32_t opt_num = use_options ? state->get_header()->options_avail : 0;
+    std::cerr << "OPTIONS LEFT: " << opt_num << std::endl;
+    queue.push(from);
+    visited.emplace(from, UNDEFINED);
+    while(!queue.empty()) {
+        uint32_t node = queue.front();
+        queue.pop();
+        auto iter = state->get_edges_iter(node);
+        for (auto i = iter.first; i < iter.second; ++i) {
+            Edge* e = state->get_edge_by_ref(i);
+            if (e->can_pass() || (e->can_exec_opt() && opt_num >  0)) {
+                // can travel
+                uint32_t t = e->source == node ? e->target: e->source;
+                if (visited.find(t) != visited.end()) continue; // already visited
+
+                if(!e->can_pass()) {
+                    std::cerr << "Dec opt: " << opt_num << std::endl;
+                    --opt_num; // exec option
+                }
+                queue.push(t);
+                visited.emplace(t, i);
+                if (t == to) {
+                    // target reached
+                    // unpack path
+                    auto path = unpack_path(state, from, to, visited);
+#ifdef DEBUG
+                    std::cerr << "Path found:" << from << " -> " << to << " ===>  ";
+                    for (auto it = path.rbegin(); it != path.rend(); ++it) {
+                        Edge* eee = *it;
+                        std::cerr << "(" << eee->source << "," << eee->target << "," << eee->claimed << eee->option <<  eee->me << ")";
+                    }
+                    std::cerr << std::endl;
+#endif
+                    for (auto it = path.rbegin(); it != path.rend(); ++it) {
+                        if (!(*it)->claimed_by_me()) {
+                            return *it;
+                        }
+                    }
+                    return *path.rbegin();
+                }
+
+            }
+        }
+    }
+    return nullptr;
+
 }
 
 
@@ -151,6 +206,41 @@ connect_mines_move(State* state, proto::Move* move)
     return false;
 }
 
+bool
+follow_breadcrumbs(State* state, proto::Move* move)
+{
+
+    for (size_t idx = 0; idx < state->num_targets(); ++idx) {
+        Target* t = state->get_target(idx);
+        std::cerr << idx << ": TARGETS :" << t->source << "->" << t->target << ", reached: " << t->is_reached() << std::endl;
+        if (!t->is_reached()) {
+            Edge* edge = shortest_path(state, t->source, t->target, true);
+//            if (edge == nullptr) {
+//                edge = shortest_path(state, t->source, t->target, true);
+//            }
+            if (edge != nullptr) {
+                if ( (edge->source == t->source || edge->target == t->source) && edge->claimed_by_me() ) {
+                    t->reached = 1;
+                    std::cerr << "REACHED: " << t->source << "->" << t->target << std::endl;
+                } else {
+                    assert(!edge->claimed_by_me());
+                    if (edge->is_claimed()) {
+                        // execute option
+                        *move = state->execute_option(edge->source, edge->target);
+                    } else {
+                        *move = state->claim_edge(edge->source, edge->target);
+                    }
+                    return true;
+                }
+            } else {
+                // unreachable
+                std::cerr << "UNREACHABLE: " << t->source << "->" << t->target << std::endl;
+                t->reached = 1;
+            }
+        }
+    }
+    return false;
+}
 
 bool
 random_move(State* state, proto::Move* move)
@@ -171,6 +261,6 @@ bool
 make_move(State* state, proto::Move* move)
 {
 
-    return connect_mines_move(state, move)
+    return follow_breadcrumbs(state, move)
         || random_move(state, move);
 }

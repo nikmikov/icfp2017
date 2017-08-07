@@ -28,7 +28,9 @@ setup(const json::value::object& root )
     auto setup = proto::read_setup(root);
     State state(setup);
 
-    io::send(proto::write_punter_ready(setup.punter, state.serialize()));
+    auto futures = state.init_execution_plan();
+
+    io::send(proto::write_punter_ready(setup.punter, futures, state.serialize()));
 }
 
 void
@@ -37,6 +39,7 @@ gameplay(const json::value::object& root )
     proto::Moves moves;
     read_moves(root, &moves);
     State game_state(root.at("state").get<std::string>());
+    std::cerr << "MOVES LEFT: " << game_state.moves_left() << std::endl;
     game_state.update(moves);
 
     proto::Move move;
