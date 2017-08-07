@@ -94,13 +94,32 @@ read_moves(const json::value::object& root, Moves* moves)
         if (m.find("pass") != m.end()) {
             const auto& pass = m.at("pass").get<json::object>();
             int punter = static_cast<int>(pass.at("punter").get<double>());
-            moves->emplace_back(punter);
+            moves->push_back(Move::pass(punter));
         } else if (m.find("claim") != m.end()) {
             const auto& claim = m.at("claim").get<json::object>();
             int punter = static_cast<int>(claim.at("punter").get<double>());
             int source = static_cast<int>(claim.at("source").get<double>());
             int target = static_cast<int>(claim.at("target").get<double>());
-            moves->emplace_back(punter, source, target);
+            moves->push_back(Move::claim(punter, source, target));
+        } else if (m.find("splurge") != m.end()) {
+            // convert splurge to series of claim
+            const auto& splurge = m.at("splurge").get<json::object>();
+            int punter = static_cast<int>(splurge.at("punter").get<double>());
+            const auto& route = splurge.at("route").get<json::array>();
+            int prev = -1;
+            for (const auto& elem: route) {
+                int site_id = static_cast<int>(elem.get<double>());
+                if (prev != -1) {
+                    moves->push_back(Move::claim(punter, prev, site_id));
+                }
+                prev = site_id;
+            }
+        } else if (m.find("option") != m.end()) {
+            const auto& option = m.at("option").get<json::object>();
+            int punter = static_cast<int>(option.at("punter").get<double>());
+            int source = static_cast<int>(option.at("source").get<double>());
+            int target = static_cast<int>(option.at("target").get<double>());
+            moves->push_back(Move::option(punter, source, target));
         } else {
             std::cerr << "Unknown move type: " << elem << std::endl;
             exit(1);
@@ -122,9 +141,20 @@ write_move(const proto::Move& move, const std::string& state)
         v.get<json::object>()["claim"] = json::value(m);
         break;
     }
-    case PASS:
+    case PASS:{
         v.get<json::object>()["pass"] = json::value(m);
         break;
+    }
+    case SPLURGE: {
+        v.get<json::object>()["pass"] = json::value(m);
+        break;
+    }
+    case OPTION: {
+        m["source"] = json::value(static_cast<double>(move.source));
+        m["target"] = json::value(static_cast<double>(move.target));
+        v.get<json::object>()["option"] = json::value(m);
+        break;
+    }
     }
     v.get<json::object>()["state"] = json::value(state);
     return v.serialize();

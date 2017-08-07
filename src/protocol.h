@@ -30,12 +30,15 @@ struct Setup {
     Map map;
 };
 
-enum MoveType {CLAIM, PASS};
+enum MoveType {CLAIM, PASS, SPLURGE, OPTION};
 
 struct Move {
     Move() {}
-    Move(int p, int s, int t): move_type(CLAIM), punter(p), source(s), target(t) {}
-    Move(int p): move_type(PASS), punter(p) {}
+    Move(MoveType tpe, int p, int s, int t): move_type(tpe), punter(p), source(s), target(t) {}
+    static inline Move claim(int p, int s, int t) { return Move(CLAIM, p, s, t); }
+    static inline Move pass(int p) { return Move(PASS, p, 0, 0); }
+    static inline Move option(int p, int s, int t) { return Move(OPTION, p, s, t); }
+
     MoveType move_type;
     int punter;
     int source;

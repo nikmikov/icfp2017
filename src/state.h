@@ -76,7 +76,7 @@ public:
 
     bool is_mine(uint32_t node_id) { return get_node(node_id)->is_mine != 0; }
 
-    proto::Move claim_edge(uint32_t source, uint32_t target) { return proto::Move(whoami(), source, target); }
+    proto::Move claim_edge(uint32_t source, uint32_t target) { return proto::Move::claim(whoami(), source, target); }
 
     bool claimed_by_me(Edge* e) { return (int)e->claimed_by == whoami(); }
 
